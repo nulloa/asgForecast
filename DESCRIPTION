@@ -1,0 +1,11 @@
+Package: asgForecast
+Title: Importance Sampling with Assymetrical Gaussian Distribution
+Version: 0.0.0.9000
+Authors@R: person("Nehemias", "Ulloa", email = "nulloa1@iastate.edu", role = c("aut", "cre"))
+Description: This package implemetnts an importance sampling forecasting technique with a assymetrical Gaussian distribution.
+Depends: R (>= 3.3.2)
+Imports: functform, rstan, boot
+License: What license is it under?
+Encoding: UTF-8
+LazyData: true
+RoxygenNote: 6.0.1.9000
