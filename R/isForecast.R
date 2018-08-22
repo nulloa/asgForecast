@@ -32,9 +32,9 @@ isForecast <- function(y, n.weeks, seas.fits, priors, prior.type="Unif", n.iter,
   for(i in 1:n.iter){
     # Draw mu
     if(prior.type!="Unif"){
-      samp.mu <- rnorm(mean=priors[1], sd=priors[2])
+      samp.mu <- rnorm(n=1, mean=priors[1], sd=priors[2])
     }else{
-      samp.mu <- runif(1, priors[1], priors[2]) 
+      samp.mu <- runif(n=1, priors[1], priors[2]) 
     }
     
     # Draw a past forecast
