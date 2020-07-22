@@ -7,34 +7,27 @@ data {
   real y[n]; // observed value of flu
   int<lower = 1, upper = nS> seas[n]; // season indicator 
   int<lower=1> k; // number of mean parameters
-  real<lower=0> yvar; // variance of data model
+  real<lower=0> ysd; // variance of data model
   vector[k] mu0;
   cov_matrix[k] C0;
 }
 
 parameters {
-  matrix[nS, k] ctheta [nG]; // Parameters for Each Year.  This is nG x nS x K array
+  matrix[nS, k] ctheta; // Parameters for Each Year.  This is a nS x K matrix
   vector<lower=0> [k] tau; // Standard Deviation for Parameters for S seasons
-  cholesky_factor_corr[k] Lcorr;
-  vector[k] mu_s [nS];
+  //cholesky_factor_corr[k] Lcorr;
+  vector[k] mu_s;
 }
 
 transformed parameters {
   real mu[n]; // Logit of psi
   
   for(i in 1:n){
-    // if (x[i] < exp(ctheta[group[i], seas[i], 4])){
-    //   mu[i] = inv_logit(ctheta[group[i], seas[i], 1] + (ctheta[group[i], seas[i], 3] - ctheta[group[i], seas[i], 1])*exp(-((x[i] - exp(ctheta[group[i], seas[i], 4]))^2)/(2*(exp(ctheta[group[i], seas[i], 5]))^2)));
-    // }
-    // else{
-    //   mu[i] = inv_logit(ctheta[group[i], seas[i], 2] + (ctheta[group[i], seas[i], 3] - ctheta[group[i], seas[i], 2])*exp(-((x[i] - exp(ctheta[group[i], seas[i], 4]))^2)/(2*(exp(ctheta[group[i], seas[i], 6]))^2)));
-    // }
-    
-        if (x[i] < exp(ctheta[group[i], seas[i], 4])){
-          mu[i] = inv_logit(ctheta[group[i], seas[i], 1]) + (inv_logit(ctheta[group[i], seas[i], 3]) - inv_logit(ctheta[group[i], seas[i], 1]))*exp(-((x[i] - exp(ctheta[group[i], seas[i], 4]))^2)/(2*(exp(ctheta[group[i], seas[i], 5]))^2));
+        if (x[i] < exp(ctheta[seas[i], 4])){
+          mu[i] = inv_logit(ctheta[seas[i], 1] + exp(ctheta[seas[i], 3])*exp(-((x[i] - exp(ctheta[seas[i], 4]))^2)/(2*(exp(ctheta[seas[i], 5]))^2)));
           }
           else{
-            mu[i] = inv_logit(ctheta[group[i], seas[i], 2]) + (inv_logit(ctheta[group[i], seas[i], 3]) - inv_logit(ctheta[group[i], seas[i], 2]))*exp(-((x[i] - exp(ctheta[group[i], seas[i], 4]))^2)/(2*(exp(ctheta[group[i], seas[i], 6]))^2));
+            mu[i] = inv_logit(ctheta[seas[i], 1] + exp(ctheta[seas[i], 3])*exp(-((x[i] - exp(ctheta[seas[i], 4]))^2)/(2*(exp(ctheta[seas[i], 6]))^2)));
           }
   }
 
@@ -43,25 +36,24 @@ transformed parameters {
 model {
   //Prior for Error Terms by Year
   tau ~ student_t(4, 0, 1); //Prior on group SD
-  Lcorr ~ lkj_corr_cholesky(1); //prior for correlations
+  //Lcorr ~ lkj_corr_cholesky(1); //prior for correlations
   
   mu_s ~ multi_normal(mu0, C0); //prior on season mean
   
-  for(g in 1:nG){
-    for(s in 1:nS){
-      row(ctheta[g], s) ~ multi_normal_cholesky(mu_s[s], diag_pre_multiply(tau, Lcorr)); // c(beta1[g], beta2[g], leta[g], mu[g], lsigma1[g], lsigma2[g])
-    }
+  for(s in 1:nS){
+    //ctheta[s] ~ multi_normal_cholesky(mu_s, diag_pre_multiply(tau, Lcorr)); // c(beta1[g], beta2[g], eta[g], lmu[g], lsigma1[g], lsigma2[g])
+    ctheta[s] ~ multi_normal(mu_s, diag_matrix(tau));
   }
   
-  y ~ normal(mu, yvar);
+  y ~ normal(mu, ysd);
 }
 
 generated quantities {
   vector[n] log_lik;
-  matrix[k,k] Omega;
-  Omega = multiply_lower_tri_self_transpose(Lcorr);
+  //matrix[k,k] Omega;
+  //Omega = multiply_lower_tri_self_transpose(Lcorr);
   for(i in 1:n){
-    log_lik[i] = normal_lpdf(y[i] | mu[i], yvar);
+    log_lik[i] = normal_lpdf(y[i] | mu[i], ysd);
   }
 }
 
