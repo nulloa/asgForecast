@@ -20,7 +20,7 @@
 
 
 asg <- Vectorize(function(x, beta1, beta2, mu, h, sigma1, sigma2){
-  top <- beta1 + (h - beta1)*exp(-((x - mu)^2)/(2*sigma1^2))
-  bot <- beta2 + (h - beta2)*exp(-((x - mu)^2)/(2*sigma2^2))
+  top <- beta1 + (h)*exp(-((x - mu)^2)/(2*sigma1^2))
+  bot <- beta2 + (h)*exp(-((x - mu)^2)/(2*sigma2^2))
   ifelse(x < mu,return(top),return(bot))
 })
