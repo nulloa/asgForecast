@@ -22,34 +22,49 @@
 #' @export
 
 
-isForecast <- function(y, n.weeks, seas.fits, priors, prior.type="Unif", n.iter, tau, sigma, samp_type="Transformation"){
+isForecast <- function(y, n.weeks, seas.fits, priors, prior.type="Unif", n.iter, tau, sigma, samp_type="No Transformation"){
+  
+  require(progress)
+  require(extraDistr)
   
   forecast <- weight <- weights <- NULL
   n <- length(y)
   n.fits <- nrow(seas.fits)
-  cur.dat <- y[1:n.weeks]
+  pb <- progress_bar$new(total = n.iter)
   
   for(i in 1:n.iter){
     # Draw mu
     if(prior.type!="Unif"){
-      samp.mu <- rnorm(n=1, mean=priors[1], sd=priors[2])
+      samp.mu <- extraDistr::rdnorm(n=1, mean=priors[1], sd=priors[2])
     }else{
-      samp.mu <- runif(n=1, priors[1], priors[2]) 
+      samp.mu <- sample(priors[1]:priors[2], 1) 
     }
     
     # Draw a past forecast
     samp.fit.id <- sample(1:n.fits, size=1)
     
     # Get fit of given past forecast
-    samp.fit <- boot::inv.logit(tau*asg(x=(1:30), mu=seas.fits[samp.fit.id,]$mu, h=seas.fits[samp.fit.id,]$h,
-                                        beta1=seas.fits[samp.fit.id,]$beta1, beta2=seas.fits[samp.fit.id,]$beta2,
-                                        sigma1=seas.fits[samp.fit.id,]$sigma1, sigma2=seas.fits[samp.fit.id,]$sigma2))
+    samp.fit <- boot::inv.logit(tau*asg(x=(1:30), 
+                                        mu=seas.fits[samp.fit.id,]$mu, 
+                                        h=seas.fits[samp.fit.id,]$h,
+                                        beta1=seas.fits[samp.fit.id,]$beta1, 
+                                        beta2=seas.fits[samp.fit.id,]$beta2,
+                                        sigma1=seas.fits[samp.fit.id,]$sigma1, 
+                                        sigma2=seas.fits[samp.fit.id,]$sigma2))
+    weeks <- 1:30
     
     if(samp_type=="Transformation"){
-      samp.fit <- boot::inv.logit(tau*asg(x=(1:30 - samp.mu + which.max(samp.fit)), 
-                                          mu=seas.fits[samp.fit.id,]$mu, h=seas.fits[samp.fit.id,]$h,
-                                          beta1=seas.fits[samp.fit.id,]$beta1, beta2=seas.fits[samp.fit.id,]$beta2,
-                                          sigma1=seas.fits[samp.fit.id,]$sigma1, sigma2=seas.fits[samp.fit.id,]$sigma2))
+      
+      offset <- which.max(samp.fit) - samp.mu
+      
+      samp.fit <- boot::inv.logit(tau*asg(x=c((1-abs(offset)):(30+abs(offset))), 
+                                          mu=seas.fits[samp.fit.id,]$mu, 
+                                          h=seas.fits[samp.fit.id,]$h,
+                                          beta1=seas.fits[samp.fit.id,]$beta1, 
+                                          beta2=seas.fits[samp.fit.id,]$beta2,
+                                          sigma1=seas.fits[samp.fit.id,]$sigma1, 
+                                          sigma2=seas.fits[samp.fit.id,]$sigma2))
+      samp.fit <- samp.fit[1:30 + abs(offset) + offset]
     }
     
     # Get weights
@@ -58,13 +73,23 @@ isForecast <- function(y, n.weeks, seas.fits, priors, prior.type="Unif", n.iter,
     }
     weight = prod(weights)
     
-    tmp <- c(cur.dat, samp.fit[-c(1:n.weeks)], weight, samp.mu, samp.fit.id, i)
+    # Get MSPE
+    mspe = mean((y[1:n.weeks] - samp.fit[1:n.weeks])^2)
+    
+    tmp <- data.frame(
+      fit       = c(y[1:n.weeks], samp.fit[-c(1:n.weeks)]),
+      week      = weeks,
+      weight    = weight, 
+      mspe      = mspe, 
+      samp.mu   = samp.mu, 
+      fit.id    = samp.fit.id, 
+      iteration = i
+      )
+    
     forecast <- rbind(forecast, tmp)
+    
+    pb$tick()
   }
-  
-  row.names(forecast) <- NULL
-  forecast <- data.frame(forecast)
-  names(forecast) <- c(paste(1:30), "weight", "samp.mu", "samp.fit", "iteration")
   
   return(forecast)
 }
