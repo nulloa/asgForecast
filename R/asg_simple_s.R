@@ -36,7 +36,7 @@ asg_simple_s <- function(y, x, sd, group, season, priors, niter=4000, nwarmup=ni
   }
   
   # Setup data for model
-  dat = list(x = x, k = 6, yvar = sd^2, y = y, group = group,
+  dat = list(x = x, k = 6, ysd = sd, y = y, group = group,
              nG = length(unique(group)), n = length(y), seas = as.numeric(season),
              nS = length(unique(season)))
   # Set priors
