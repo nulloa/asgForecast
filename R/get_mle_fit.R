@@ -22,7 +22,7 @@ get_mle_fit <- function(inits, data){
                                     beta1 = inits[r,s,1],
                                     beta2 = inits[r,s,2],
                                     mu = exp(inits[r,s,4]),
-                                    h = inits[r,s,3],
+                                    h = exp(inits[r,s,3]),
                                     sigma1 = exp(inits[r,s,5]),
                                     sigma2 = exp(inits[r,s,6])
       )
